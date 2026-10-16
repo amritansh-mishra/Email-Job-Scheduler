@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import type { ButtonHTMLAttributes } from 'react';
+import { Link, type LinkProps } from 'react-router-dom';
 import { Spinner } from './Spinner';
 
 type Variant = 'primary' | 'outline' | 'soft' | 'ghost';
@@ -17,6 +18,15 @@ const sizes: Record<Size, string> = {
   md: 'h-9 px-4 text-[13px] rounded-lg',
 };
 
+function buttonClasses(variant: Variant, size: Size, className?: string) {
+  return clsx(
+    'inline-flex items-center justify-center gap-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+    variants[variant],
+    sizes[size],
+    className,
+  );
+}
+
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
@@ -28,17 +38,17 @@ export function Button({ variant = 'primary', size = 'md', loading, disabled, cl
     <button
       {...rest}
       disabled={disabled || loading}
-      className={clsx(
-        'inline-flex items-center justify-center gap-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-        variants[variant],
-        sizes[size],
-        className,
-      )}
+      className={buttonClasses(variant, size, className)}
     >
       {loading && <Spinner className="size-3.5" />}
       {children}
     </button>
   );
+}
+
+/** A router link that looks like a Button. */
+export function ButtonLink({ variant = 'primary', size = 'md', className, ...rest }: LinkProps & { variant?: Variant; size?: Size }) {
+  return <Link {...rest} className={buttonClasses(variant, size, className)} />;
 }
 
 /** Square icon button used in toolbars and headers. */

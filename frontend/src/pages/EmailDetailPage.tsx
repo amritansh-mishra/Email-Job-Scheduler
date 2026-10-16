@@ -1,12 +1,13 @@
 import DOMPurify from 'dompurify';
 import { Archive, ArrowLeft, ChevronDown, ExternalLink, Trash2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { StarButton } from '../components/email/StarButton';
 import { StatusPill } from '../components/email/StatusPill';
 import { Avatar } from '../components/ui/Avatar';
 import { IconButton } from '../components/ui/Button';
+import { ConfirmDialog } from '../components/ui/Modal';
 import { ErrorState, FullPageSpinner } from '../components/ui/States';
 import { useDeleteEmail, useEmail, useMe } from '../hooks/queries';
 import { formatDateTime } from '../lib/format';
@@ -17,25 +18,39 @@ export function EmailDetailPage() {
   const { data: me } = useMe();
   const { data: email, isLoading, isError, error, refetch } = useEmail(id);
   const del = useDeleteEmail();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const html = useMemo(() => DOMPurify.sanitize(email?.bodyHtml ?? ''), [email?.bodyHtml]);
 
   const back = () => (window.history.length > 1 ? navigate(-1) : navigate('/scheduled'));
 
+  const isScheduled = email?.status === 'scheduled';
+
   const onDelete = () => {
     if (!email) return;
-    const verb = email.status === 'scheduled' ? 'Cancel this scheduled email' : 'Delete this email';
-    if (!confirm(`${verb}?`)) return;
     del.mutate(email.id, {
       onSuccess: () => {
-        toast.success(email.status === 'scheduled' ? 'Scheduled email cancelled' : 'Email deleted');
+        toast.success(isScheduled ? 'Scheduled email cancelled' : 'Email deleted');
+        setConfirmOpen(false);
         back();
       },
-      onError: (e) => toast.error(e.message),
+      onError: (e) => {
+        toast.error(e.message);
+        setConfirmOpen(false);
+      },
     });
   };
 
   return (
     <div className="flex h-full flex-col">
+      <ConfirmDialog
+        open={confirmOpen}
+        title={isScheduled ? 'Cancel scheduled email?' : 'Delete email?'}
+        message={isScheduled ? 'It will not be sent. This cannot be undone.' : 'It will be removed from your Sent list.'}
+        confirmLabel={isScheduled ? 'Cancel email' : 'Delete'}
+        loading={del.isPending}
+        onConfirm={onDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
         <IconButton aria-label="Back" onClick={back} className="text-ink">
           <ArrowLeft className="size-4" />
@@ -47,7 +62,7 @@ export function EmailDetailPage() {
             <IconButton aria-label="Archive" title="Archive is not part of this demo" disabled>
               <Archive className="size-3.5" />
             </IconButton>
-            <IconButton aria-label="Delete" onClick={onDelete} disabled={email.status === 'sending' || del.isPending}>
+            <IconButton aria-label="Delete" onClick={() => setConfirmOpen(true)} disabled={email.status === 'sending' || del.isPending}>
               <Trash2 className="size-3.5" />
             </IconButton>
             <span className="mx-1 h-5 w-px bg-line" />

@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { Clock, Send } from 'lucide-react';
-import { Link, NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { ButtonLink } from '../ui/Button';
 import { useCounts } from '../../hooks/queries';
 import { Logo } from '../ui/Logo';
 import { SlackCard } from './SlackCard';
@@ -20,12 +21,9 @@ export function Sidebar() {
         <Logo />
       </div>
       <UserMenu />
-      <Link
-        to="/compose"
-        className="flex h-8 items-center justify-center rounded-full border border-brand text-xs font-medium text-brand transition-colors hover:bg-brand-soft"
-      >
+      <ButtonLink to="/compose" variant="outline" size="sm" className="h-8">
         Compose
-      </Link>
+      </ButtonLink>
 
       <p className="mt-2 px-1 text-[10px] font-medium tracking-wide text-muted uppercase">Core</p>
       <nav className="-mt-1 flex flex-col gap-0.5">

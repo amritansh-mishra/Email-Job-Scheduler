@@ -2,10 +2,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { Clock, Filter, RotateCw, Search, Send, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { EmailRow } from '../components/email/EmailRow';
 import { Pagination } from '../components/email/Pagination';
-import { IconButton } from '../components/ui/Button';
+import { ButtonLink, IconButton } from '../components/ui/Button';
 import { Popover } from '../components/ui/Popover';
 import { EmptyState, ErrorState, ListSkeleton } from '../components/ui/States';
 import { keys, useEmails } from '../hooks/queries';
@@ -111,9 +111,9 @@ export function InboxPage({ tab }: { tab: Tab }) {
             <EmptyState
               {...EMPTY[tab]}
               action={
-                <Link to="/compose" className="rounded-full border border-brand px-4 py-1.5 text-xs font-medium text-brand hover:bg-brand-soft">
+                <ButtonLink to="/compose" variant="outline" size="sm">
                   Compose
-                </Link>
+                </ButtonLink>
               }
             />
           )
