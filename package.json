@@ -1,0 +1,15 @@
+{
+  "name": "reachinbox-email-scheduler",
+  "private": true,
+  "scripts": {
+    "setup": "npm i && npm i --prefix backend && npm i --prefix frontend",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "db:migrate": "npm run db:migrate --prefix backend",
+    "dev": "concurrently -n api,worker,web -c blue,magenta,green \"npm run dev --prefix backend\" \"npm run dev:worker --prefix backend\" \"npm run dev --prefix frontend\"",
+    "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5"
+  }
+}

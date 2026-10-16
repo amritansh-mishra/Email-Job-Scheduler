@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+/* Tokens transcribed from the Figma. */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-pixel: 'Silkscreen', ui-monospace, monospace;
+
+  --color-brand: #169c34;
+  --color-brand-hover: #12822b;
+  --color-brand-soft: #e3f4e6;
+  --color-field: #f1f4f3;
+  --color-line: #ececec;
+  --color-ink: #111111;
+  --color-muted: #8a8f98;
+  --color-warn: #c2410c;
+  --color-warn-soft: #fde7d3;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-white font-sans text-[13px] text-ink antialiased;
+}
+
+/* Shared styles for the compose editor and the rendered email body. */
+.rich-text p {
+  margin: 0 0 0.75em;
+}
+.rich-text h2 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 0 0 0.5em;
+}
+.rich-text h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0 0 0.5em;
+}
+.rich-text ul {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0 0 0.75em;
+}
+.rich-text ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0 0 0.75em;
+}
+.rich-text blockquote {
+  border-left: 3px solid #f5c518;
+  background: #fffbe6;
+  padding: 0.5em 0.9em;
+  margin: 0 0 0.75em;
+}
+.rich-text a {
+  color: var(--color-brand);
+  text-decoration: underline;
+}
+.ProseMirror {
+  outline: none;
+  min-height: 100%;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
