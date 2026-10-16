@@ -35,6 +35,8 @@ npm run db:migrate               # create tables
 npm run dev                      # API :4000, worker, web :5173 (all three)
 ```
 
+See **[DEMO.md](DEMO.md)** for a step-by-step demo script (a sample `demo/leads.csv` is included).
+
 Open http://localhost:5173. Bull Board (the live queue dashboard) is at http://localhost:5173/admin/queues, or directly at http://localhost:4000/admin/queues.
 
 To run the processes separately (useful for the restart demo):

@@ -1,0 +1,10 @@
+name,email,company
+Sarah Wilson,sarah@example.com,Acme
+John Smith,john@example.com,Acme
+Olive Green,olive@example.com,Acme
+Ramit Shah,ramit@example.com,Acme
+Amanda Clark,amanda@example.com,Acme
+Grant Lee,grant@example.com,Acme
+Priya Nair,priya@example.com,Acme
+Tom Becker,tom@example.com,Acme
+Duplicate Row,sarah@example.com,Acme
