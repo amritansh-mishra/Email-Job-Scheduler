@@ -35,16 +35,24 @@ async function processSend(job: Job<SendEmailJob>, token?: string) {
 
   const campaign = await db.query.campaigns.findFirst({ where: eq(schema.campaigns.id, email.campaignId) });
   const limit = effectiveHourlyLimit(campaign?.hourlyLimit ?? 0);
-  const gate = await passSendGate(email.senderId, limit, email.scheduledAt, job.data.reservedSlot ?? 0);
+  // Until a job is first shifted, its DB scheduled time is its original time.
+  const origAt = job.data.origAt ?? email.scheduledAt.getTime();
+  const gate = await passSendGate({
+    senderId: email.senderId,
+    hourlyLimit: limit,
+    origAt,
+    appliedShift: job.data.appliedShift ?? 0,
+    reservedSlot: job.data.reservedSlot ?? 0,
+  });
 
   if (gate.kind === 'throttled') {
-    return postpone(job, token, gate.slotMs, { emailId, reservedSlot: gate.slotMs });
+    return postpone(job, token, gate.slotMs, { ...job.data, reservedSlot: gate.slotMs });
   }
-  if (gate.kind === 'hourly-limit') {
+  if (gate.kind === 'postponed') {
     const retryAt = new Date(gate.retryAtMs);
     await db.update(schema.emails).set({ scheduledAt: retryAt, updatedAt: new Date() }).where(eq(schema.emails.id, emailId));
     await updateIndexedEmail(emailId, { scheduledAt: retryAt });
-    if (gate.firstHitThisWindow) {
+    if (gate.limitHit && gate.firstHitThisWindow) {
       const sender = await db.query.senders.findFirst({ where: eq(schema.senders.id, email.senderId) });
       logger.warn('Hourly limit reached', { senderId: email.senderId, limit });
       void notifySlack(
@@ -53,7 +61,7 @@ async function processSend(job: Job<SendEmailJob>, token?: string) {
           `Remaining emails are paused and will resume at ${retryAt.toUTCString()}.`,
       );
     }
-    return postpone(job, token, gate.retryAtMs, { emailId });
+    return postpone(job, token, gate.retryAtMs, { emailId, origAt, appliedShift: gate.appliedShift });
   }
 
   // Idempotency, layer 2: atomic claim. Only one worker can move scheduled -> sending.

@@ -138,7 +138,7 @@ All throttling runs in **one Lua script in Redis** (`backend/src/queue/rateLimit
 | **Concurrency** | `new Worker(..., { concurrency: WORKER_CONCURRENCY })`. Parallel jobs are safe because of the atomic claim and the atomic gate. Run more worker processes to scale out. |
 | **Delay between emails** | **Min 2 seconds between sends per sender** (`MIN_DELAY_BETWEEN_SENDS_MS=2000`). Enforced in two places: campaigns are spaced at least that far apart when scheduled, and at send time a Redis key `rl:{sender}:next` holds the earliest time the next send may start. A job that arrives too early **reserves** the next free slot, then is moved to that time (`moveToDelayed` + `DelayedError`, which doesn't count as a failed attempt). Each job is postponed at most once, so a burst doesn't repeatedly reshuffle the queue. The gap is measured between send **starts**. A slow SMTP handshake (Ethereal's first connection can take about 3 seconds) can make completion times closer together; with a warm connection they are 2 seconds apart too. |
 | **Emails per hour** | Per sender. The counter `rl:{sender}:h:{hourWindow}` is checked and incremented in the same script. The limit is the campaign's **Hourly Limit**, capped by `MAX_EMAILS_PER_HOUR_PER_SENDER`; 0 means "use the server default". |
-| **When the limit is reached** | Jobs are never dropped or failed. An over-limit job is moved forward by **whole hours from its own scheduled time** until it lands in the next window (for example 16:20:04 becomes 17:20:04). Overflow jobs therefore **keep their original order and spacing exactly**, even when parallel workers reach the limit in a random order. The row's `scheduled_at` is updated so the dashboard shows the new time. |
+| **When the limit is reached** | Jobs are never dropped or failed. The over-limit job is moved forward by **whole hours from its own scheduled time** until it lands in the next window (for example 16:40:04 becomes 17:40:04). The sender now has a *backlog*, recorded in `rl:{sender}:shift`. **Every later email from that sender** that would otherwise run before the backlog clears is moved by the same amount, including emails originally scheduled in the next hour. The rest of the stream therefore moves as one block and **keeps its exact order and spacing**, even when parallel workers reach the gate in random order. If the next hour fills up too, the block moves again. Emails scheduled after the backlog has cleared are not affected. The row's `scheduled_at` is updated so the dashboard shows the new time. |
 | **Slack alert** | The first job to hit the limit in a window sets `rl:{sender}:notified:{window}` (`SET NX`), and that job sends the Slack message: one alert per sender per hour, at the moment the limit is hit. The Slack connection is looked up from the database on every alert. If none exists, nothing is sent and nothing breaks. Connecting later works immediately, without a redeploy. A revoked webhook (404/410) is removed automatically. |
 
 **Behaviour under load (1000+ emails at roughly the same time).** The API inserts in chunks of 1000 and enqueues in batches of 500. Within one campaign, sends are spaced at least 2 seconds apart when scheduled. When several campaigns share a sender, the send-time gate spaces them out through slot reservations, and once a sender reaches its hourly limit, the rest roll into following hours in their original order. Throughput per sender is therefore `min(3600 / 2s = 1800, hourly limit)` emails per hour. Using more senders increases the total. To watch it happen:
@@ -146,6 +146,9 @@ All throttling runs in **one Lua script in Redis** (`backend/src/queue/rateLimit
 ```bash
 # sign in once first, then (with the API and worker running):
 npm run loadtest --prefix backend -- you@gmail.com 1000 50
+
+# order guarantee of the rate-limit gate (needs Redis only):
+npm run test:ratelimit --prefix backend
 ```
 
 This schedules 1000 emails with a limit of 50 per hour. In Bull Board you can watch jobs move from delayed to active to completed, while the rest are pushed into later hours. If Slack is connected, the alert arrives when the 50th email goes out.
@@ -154,7 +157,8 @@ This schedules 1000 emails with a limit of 50 per hour. In Bull Board you can wa
 - Different campaigns from the same sender share one hourly counter. Each job is checked against its own campaign's limit, so the strictest active campaign effectively controls the pace.
 - The hourly counter is incremented when a send is *attempted*. A failed SMTP send still uses up a slot, which errs on the side of sending less.
 - Hour windows are fixed UTC hours, not a rolling 60 minutes. That's simpler and makes it obvious when the next window opens.
-- After downtime, overdue jobs are picked up `WORKER_CONCURRENCY` at a time and race for the gate, so within one such batch the send order can be off by a few places. Overflow into later hours always keeps the exact original order. In normal operation emails are already spaced out and arrive one at a time, so order is preserved.
+- After downtime, overdue jobs are picked up `WORKER_CONCURRENCY` at a time and race for the gate. Which of them get the remaining slots in the current hour can therefore be off by a few places. Everything that moves to later hours keeps the exact original order. In normal operation emails are already spaced out and arrive one at a time, so order is preserved.
+- A backlog can make a sender's emails go out hours later than scheduled. That is the cost of never dropping emails under a hard hourly cap. Adding senders increases throughput.
 
 ### Search
 

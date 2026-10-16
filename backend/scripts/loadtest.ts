@@ -41,3 +41,5 @@ console.log(`Scheduled ${result.scheduled} emails in ${Date.now() - started}ms`,
 
 await emailQueue.close();
 await pool.end();
+// The Elasticsearch client keeps sockets open; exit explicitly.
+process.exit(0);
